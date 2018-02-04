@@ -1,0 +1,49 @@
+- hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Install python for Ansible
+      raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
+
+- hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Install aptitude for Ansible
+      raw: test -e /usr/bin/aptitude || (apt -y update && apt install -y aptitude)
+
+- hosts: all
+  gather_facts: true
+  become: true
+  tasks:
+    - apt: update_cache=yes upgrade=yes autoremove=yes
+    - package: name={{ item }} state=latest
+      with_items:
+       - ntp
+       - htop
+       - apt-transport-https
+       - ca-certificates
+       - curl
+       - software-properties-common
+       - build-essential 
+       - cmake 
+       - git 
+       - unzip 
+       - zip
+       - python2.7-dev 
+       - python3.5-dev 
+       - pylint
+    - group: name=sudo state=present
+    - group: name=wheel state=present
+    - user: name=ubuntu shell=/bin/bash groups=adm,sudo,wheel append=yes
+    - authorized_key: user=ubuntu key={{ lookup('file', item) }}
+      with_fileglob:
+        - public_keys/*
+    - user: name={{ item.split('/')[-1] }} shell=/bin/bash groups=adm,sudo,wheel append=yes
+      with_fileglob:
+        - public_keys/*
+    - authorized_key: user={{ item.split('/')[-1] }} key={{ lookup('file', item) }}
+      with_fileglob:
+        - public_keys/*
+    - lineinfile: "dest=/etc/sudoers state=present line='%sudo ALL=(ALL) NOPASSWD: ALL'"
+
